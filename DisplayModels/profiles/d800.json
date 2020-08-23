@@ -1,0 +1,6 @@
+{
+  "L_max":800,
+  "L_min":1,
+  "L_contrast_ratio":1000,
+  "k_reflectivity": 0.01
+}
