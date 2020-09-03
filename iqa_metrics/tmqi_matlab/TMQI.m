@@ -45,7 +45,7 @@ function [Q, S, N, s_maps, s_local] = TMQI(hdrImage, ldrImage, window)
 %
 %Output: (1) s_maps: The structural fidelity maps of the LDR image.     
 %        (2) s_local: the mean of s_map in each scale (see above refernce).
-%        (3) S: The tructural fidelity score of the LDR test image. 
+%        (3) S: The structural fidelity score of the LDR test image.
 %        (4) N: The statistical naturalness score of the LDR image.
 %        (5) Q: The TMQI score of the LDR image. 
 %

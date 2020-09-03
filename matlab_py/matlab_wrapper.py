@@ -2,7 +2,7 @@ try:
     import matlab
     import matlab.engine
 except ImportError:
-    print("WARNING: MATLAB is missing. All MATLAB implementations will not work.")
+    print("WARNING: MATLAB is missing. Running MATLAB implementations will result in errors.")
 
 import numpy as np
 import scipy.io
@@ -12,7 +12,7 @@ matlab_eng = None
 matlab_io_out = None
 matlab_io_err = None
 
-temp_folder = "iqa_tool_matlab_temp_folder"
+matlab_wrapper_temp_folder = "iqa_tool_matlab_temp_folder"
 
 
 def init_instance_matlab():
@@ -21,13 +21,13 @@ def init_instance_matlab():
     :return:
     """
 
-    if not os.path.exists(temp_folder):
-        os.makedirs(temp_folder)
+    if not os.path.exists(matlab_wrapper_temp_folder):
+        os.makedirs(matlab_wrapper_temp_folder)
 
     global matlab_eng, matlab_io_out, matlab_io_err
 
     # configure Matlab instance
-    matlab_eng = matlab.engine.start_matlab().result()
+    matlab_eng = matlab.engine.start_matlab(background=True).result()
     matlab_io_out = io.StringIO()
     matlab_io_err = io.StringIO()
 
@@ -58,10 +58,11 @@ def imgs_to_unique_mat(img1, img2=None, num_chars=20, dict_tag="tag", extra_iden
     random_inds = np.array(np.random.rand(num_chars) * len(uuid_str), np.uint8)
     final_str = ''.join([uuid_str[i] for i in random_inds])
 
-    path1 = temp_folder + "/" + extra_identifier + "-" + final_str + "_1.mat"
-    path2 = temp_folder + "/" + extra_identifier + "-" + final_str + "_2.mat"
+    path1 = matlab_wrapper_temp_folder + "/" + extra_identifier + "-" + final_str + "_1.mat"
+    path2 = matlab_wrapper_temp_folder + "/" + extra_identifier + "-" + final_str + "_2.mat"
 
     scipy.io.savemat(path1, mdict={dict_tag: img1})
+    # image 2 is not always provided
     if img2 is not None:
         scipy.io.savemat(path2, mdict={dict_tag: img2})
 

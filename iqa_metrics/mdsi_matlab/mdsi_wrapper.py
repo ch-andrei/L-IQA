@@ -1,10 +1,10 @@
 import matlab_py.matlab_wrapper as mw
 from utils.image_processing.image_tools import ensure3d
 
-import os, matlab_py
+import os
 
 
-def init_instance_mdsi():
+def init_instance_mdsi(**kwargs):
     matlab_eng = mw.get_matlab_instance()
 
     cwd = os.getcwd()  # assumes ".../iqa-tool/model" (or ".../{repo_name}/model") as runtime entry point
@@ -12,10 +12,13 @@ def init_instance_mdsi():
         r'{}\iqa_metrics\mdsi_matlab'.format(cwd),
         nargout=0)
 
-    print("Initialized Matlab instance (MDSI).")
+    print("Initialized MDSI instance (MATLAB).")
 
 
-def compute_mdsi(img1, img2, data_range, use_grayscale=True):
+def compute_mdsi(img1, img2, **kwargs):
+    data_range = kwargs.pop("data_range", 1.0)
+    use_grayscale = kwargs.pop("use_grayscale", False)
+
     # MDSI assumes 0-255 dynamic range for the input images
     # rescale both images to 0-255 maintaining the original dynamic range difference ratio
     img1 *= 255.0 / data_range

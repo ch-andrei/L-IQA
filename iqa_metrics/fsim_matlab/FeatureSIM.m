@@ -45,6 +45,7 @@ function [FSIM, FSIMc] = FeatureSIM(imageRef, imageDis)
 %[FSIM, FSIMc] = FeatureSIM(img1, img2);
 %-----------------------------------------------------------------------
 
+
 [rows, cols] = size(imageRef(:,:,1));
 I1 = ones(rows, cols);
 I2 = ones(rows, cols);

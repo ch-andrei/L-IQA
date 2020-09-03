@@ -1,7 +1,7 @@
 from DisplayModels.display_model import *
 
 
-# display model tests
+# display model Examples
 if __name__=="__main__":
     from utils.image_processing.image_tools import *
     img = imread("228620182_redesign.png", "footage/images/bulk/imgs", format_float=True, rescale=1)

@@ -6,4 +6,4 @@ class Logger(object):
 
     def __call__(self, *args):
         if self.verbose:
-            print(args)
+            print(*args)

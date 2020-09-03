@@ -46,10 +46,24 @@ class IqaTool(object):
             else:
                 self.iqa_to_use = [iqa_to_use]
         else:
-            # default assignment initializes everything
-            self.iqa_to_use = iqa_get_all_available_metrics()
+            # default metrics
+            self.iqa_to_use = [
+                iqa_mse,
+                iqa_psnr,
+                iqa_ssim,
+                iqa_msssim,
+                iqa_mssim_py,
+                iqa_lpips,
+                iqa_tmqi,
+                iqa_fsim,
+                iqa_vsi,
+                iqa_mdsi,
+                iqa_hdr_vdp
+            ]
 
-        iqa_initialize_metrics(self.iqa_to_use, tmqi_use_original, lpips_use_gpu)
+        iqa_initialize_metrics(self.iqa_to_use,
+                               tmqi_use_original=tmqi_use_original,
+                               lpips_use_gpu=lpips_use_gpu)
 
         # timers for computation runtime stats
         self.timers_iqa = {iqa_variant.name: Timer(iqa_variant.name) for iqa_variant in self.iqa_to_use}
@@ -62,9 +76,8 @@ class IqaTool(object):
         :param img_L:
         :return:
         """
-        # hdr-vdp-2 requires luminance values in cd/m2, not PU encoded results
-        # if iqa_variant.name == iqa_hdr_vdp_2.name or not self.use_pu_encoding:
-        if not self.use_pu_encoding:
+        # hdr-vdp requires luminance values in cd/m2, not PU encoded results
+        if iqa_variant.name == iqa_hdr_vdp.name or not self.use_pu_encoding:
             data_range = dm.get_L_upper_bound()  # Note: HDR-VDP-2 does not use this
             self.log('Using DM luminance for iqa-variant {}'.format(iqa_variant.name))
             return img_L, data_range
@@ -129,6 +142,7 @@ class IqaTool(object):
         output = {}
         for iqa_variant in iqa_to_use:
             iqa_name = iqa_variant.name
+            iqa_compute_function = iqa_variant.compute_function
 
             timer_iqa = self.timers_iqa[iqa_name]
             timer_iqa.start()
@@ -136,9 +150,9 @@ class IqaTool(object):
             img1_iqa, data_range1 = self.get_iqa_inputs(iqa_variant, img_1_L, dm1)
             img2_iqa, data_range2 = self.get_iqa_inputs(iqa_variant, img_2_L, dm2)
 
-            data_range = max(data_range1, data_range2)
+            data_range = max(data_range1, data_range2)  # get the highest value between dm1 and dm2
 
-            Q = iqa_func_wrapper(iqa_variant.function, img1_iqa, img2_iqa, data_range)
+            Q = iqa_func_wrapper(iqa_compute_function, img1_iqa, img2_iqa, data_range=data_range)
 
             self.log(
                 "img1_iqa", img1_iqa.min(), img1_iqa.mean(), img1_iqa.max(), '\n',
@@ -261,8 +275,8 @@ class IqaTool(object):
             timer_iqa = self.timers_iqa[iqa_name]
             timer_iqa.start()
 
-            iqa_1 = iqa_func_wrapper(iqa_variant.function, iqa_img_ref, iqa_img_1, data_range)
-            iqa_2 = iqa_func_wrapper(iqa_variant.function, iqa_img_ref, iqa_img_2, data_range)
+            iqa_1 = iqa_func_wrapper(iqa_variant, iqa_img_ref, iqa_img_1, data_range=data_range)
+            iqa_2 = iqa_func_wrapper(iqa_variant, iqa_img_ref, iqa_img_2, data_range=data_range)
 
             self.log(
                 "illumination", illumination, "\n",

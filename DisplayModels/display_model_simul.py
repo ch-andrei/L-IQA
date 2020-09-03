@@ -42,7 +42,7 @@ class DisplayDegradationModel(object):
                  display_model_device,
                  verbose=False
                  ):
-        self.display_model = DisplayModel(display_model_device)
+        self.display_model = DisplayModel(device_name=display_model_device)
         self.timer_simul = Timer("Simulation")
         self.log = Logger(verbose)
 

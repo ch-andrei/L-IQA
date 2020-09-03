@@ -1,10 +1,10 @@
 import matlab_py.matlab_wrapper as mw
 from utils.image_processing.image_tools import ensure3d
 
-import os, matlab_py
+import os
 
 
-def init_instance_vsi():
+def init_instance_vsi(**kwargs):
     matlab_eng = mw.get_matlab_instance()
 
     cwd = os.getcwd()  # assumes ".../iqa-tool/model" (or ".../{repo_name}/model") as runtime entry point
@@ -12,10 +12,12 @@ def init_instance_vsi():
         r'{}\iqa_metrics\vsi_matlab'.format(cwd),
         nargout=0)
 
-    print("Initialized Matlab instance (VSI).")
+    print("Initialized VSI instance (MATLAB).")
 
 
-def compute_vsi(img1, img2, data_range):
+def compute_vsi(img1, img2, **kwargs):
+    data_range = kwargs.pop("data_range", 1.0)
+
     # VSI assumes 0-255 dynamic range for the input images
     # rescale both images to 0-255 maintaining the original dynamic range difference ratio
     img1 *= 255.0 / data_range

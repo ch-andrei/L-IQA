@@ -1,13 +1,14 @@
 import matlab_py.matlab_wrapper as mw
-from utils.image_processing.color_spaces import rgb2lum
-import os, matlab_py
+import os
 import numpy as np
+from utils.image_processing.color_spaces import rgb2lum
 
 from skimage.metrics import structural_similarity as ssim_py
 
 
-def init_instance_ssim(use_python=False):
-    if not use_python:
+def init_instance_ssim(**kwargs):
+    use_matlab = kwargs.pop('use_matlab', True)
+    if use_matlab:
         matlab_eng = mw.get_matlab_instance()
 
         cwd = os.getcwd()  # assumes ".../iqa-tool/model" (or ".../{repo_name}/model") as runtime entry point
@@ -15,31 +16,36 @@ def init_instance_ssim(use_python=False):
             r'{}\iqa_metrics\ssim_matlab'.format(cwd),
             nargout=0)
 
-        print("Initialized Matlab instance (SSIM/MS-SSIM).")
+        print("Initialized SSIM/MS-SSIM instance (MATLAB).")
     else:
-        print("Initialized Python instance (SSIM/MS-SSIM).")
+        print("Initialized SSIM Python instance (will use structural_similarity from skimage.metrics).")
 
 
-def compute_mean_ssim_py(img1, img2, data_range):
-    return compute_similarity(img1, img2, data_range, multiscale=True, use_python=True)
+def compute_mean_ssim_py(img1, img2, **kwargs):
+    return __compute_similarity(img1, img2, multiscale=True, use_python=True, **kwargs)
 
 
-def compute_msssim(img1, img2, data_range):
-    return compute_similarity(img1, img2, data_range, multiscale=True)
+def compute_msssim(img1, img2, **kwargs):
+    return __compute_similarity(img1, img2, multiscale=True, **kwargs)
 
 
-def compute_ssim(img1, img2, data_range):
-    return compute_similarity(img1, img2, data_range, multiscale=False)
+def compute_ssim(img1, img2, **kwargs):
+    return __compute_similarity(img1, img2, multiscale=False, **kwargs)
 
 
-def compute_similarity(img1, img2, data_range, multiscale=True, use_python=False):
+def __compute_similarity(img1, img2, multiscale=True, use_python=False, **kwargs):
     """
-    Uses either the original SSIM implementation or its multi-scale variant
+        Uses either the original SSIM implementation or its multi-scale variant
     :param img1:
     :param img2:
-    :param data_range:
-    :return: ssim value
+    :param multiscale: toggle between single- and multi- scale SSIM implementations (SSIM vs MSSIM)
+                        Note: this only applies when using MATLAB; only MSSIM is available for Python
+    :param use_python:
+    :param kwargs:
+    :return:
     """
+
+    data_range = kwargs.pop('data_range', 1.0)
 
     if use_python:
         mat_range = 1.0
@@ -49,6 +55,12 @@ def compute_similarity(img1, img2, data_range, multiscale=True, use_python=False
         return ssim_py(ref, A, multichannel=True, data_range=mat_range)
     else:
         mat_range = 255.0
+
+        # MATLAB version requires luminance inputs
+        if len(img1.shape) == 3:
+            img1 = rgb2lum(img1)
+            img2 = rgb2lum(img2)
+
         ref = (img1 * mat_range / data_range).astype(np.int)
         A = (img2 * mat_range / data_range).astype(np.int)
 
