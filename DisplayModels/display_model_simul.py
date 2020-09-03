@@ -31,6 +31,17 @@ def new_simul_params(illuminant=None,
                      apply_reflection=True,
                      apply_screen_dimming=True
                      ):
+    """
+    :param illuminant: ambient conditions in lux
+    :param illumination_map: reflection/illumination map (can be i) None, ii) a luminance image, iii) RGB image)
+    :param illumination_map_weight_mode:
+        controls what is used for computing maximum reflection intensity, can be 'mean' or 'max'
+    :param use_luminance_only: toggle for only using luminance channel
+    :param apply_reflection: toggle for applying reflection (when False, Lrefl = 0)
+    :param apply_screen_dimming:
+        toggle for adaptive display luminance (display luminance depends on ambient illumination)
+    :return:
+    """
     if illuminant is None:
         illuminant = ddm_ideal_iluminant
     return iqa_simul_params(illuminant, illumination_map, illumination_map_weight_mode,
