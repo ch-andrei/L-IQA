@@ -9,7 +9,7 @@ full-reference IQA metrics with our framework is provided.
 
 If you find this useful for your research, kindly cite the following:
 
-<i> Perceptual Image Quality Assessment for Various Viewing Conditions and Display Systems.
+<i> Perceptual Image Quality Assessment for Various Viewing Conditions and Display Systems
 Andrei Chubarau, Tara Akhavan, Hyunjin Yoo, Rafał K. Mantiuk and James Clark.
 Human Vision and Electronic Imaging, pp. 067-1-067-9(9), 2020, 
 (<a href="http://dx.doi.org/10.2352/ISSN.2470-1173.2020.9.IQSP-067">doi</a>)

@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def main():
-    do_write = False
+    do_write = True
 
     ddm = DisplayDegradationModel("s10")  # Samsung Galaxy s10 display profile
 
