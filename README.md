@@ -57,6 +57,11 @@ for luminance masking and, finally, IQA is computed.
     
     ./Examples/structural_reflection_test.py 
 
+    Left to right: input image, illumination map, simulated image assuming 5000 lux illumination.
+
+    <img src="https://raw.githubusercontent.com/ch-andrei/L-IQA/master/images/reflection/2/merged.jpg" alt="framework" width=750>
+
+
 3. Run multiple full reference IQA metrics
 
 DDM and IQA tool are components; one can be used with or without the other.
@@ -127,6 +132,46 @@ but it is required since PU encoding assumes Luminance inputs (and without PU en
 not correlate with human IQA).
 
 Setting "use_luminance=False" can lead to unexpected results.
+
+## Simulating image appearance in particular conditions
+
+You can use the DDM to simulate (approximately) what an image will appear like under particular
+illumination conditions and display parameters. This can be used for visualizing reflections
+on a display, to compare different display parameters, etc.
+
+Illumination (and consequently reflection) can either be uniform or structured. Uniform reflection
+is applied in equal amount to all regions of the display/image. 
+
+Structural (non-uniform) reflection is specified via an illumination map, which is input as a single channel 
+2D image with values 0-1 controlling how much illumination is applied at each pixel of the image.
+Note that the overall illumination level is still controlled via a single illuminance input, 
+i.e. 1000 lux; the illumination map is then linearly scaled with the illuminance input set as its average 
+(not maximum) value.
+
+Below are some examples of simulated reflections given this method:
+
+Illumination map:
+
+<img src="https://raw.githubusercontent.com/ch-andrei/L-IQA/master/images/reflection/1/illumination_map.jpg" alt="framework" width=250>
+
+Input image:
+
+<img src="https://raw.githubusercontent.com/ch-andrei/L-IQA/master/images/reflection/1/reference.jpg" alt="framework" width=250>
+
+Simulated assuming 1000 lux illumination:
+
+<img src="https://raw.githubusercontent.com/ch-andrei/L-IQA/master/images/reflection/1/test-s-1000.jpg" alt="framework" width=250>
+
+Simulated assuming 5000 lux illumination:
+
+<img src="https://raw.githubusercontent.com/ch-andrei/L-IQA/master/images/reflection/1/test-s-5000.jpg" alt="framework" width=250>
+
+Simulated assuming 20000 lux illumination:
+
+<img src="https://raw.githubusercontent.com/ch-andrei/L-IQA/master/images/reflection/1/test-s-20000.jpg" alt="framework" width=250>
+
+Note that the illuminant (in lux) must be measured via a tool such as a photometer for accurate results.
+Illumination map thus only provides the structural information for the illumination/reflection and not its magnitude. 
 
 ## Using IQA metrics
 
