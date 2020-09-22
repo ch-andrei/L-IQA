@@ -142,8 +142,11 @@ on a display, to compare different display parameters, etc.
 Illumination (and consequently reflection) can either be uniform or structured. Uniform reflection
 is applied in equal amount to all regions of the display/image. 
 
-Structural (non-uniform) reflection is specified via an illumination map, which is input as a single channel 
-2D image with values 0-1 controlling how much illumination is applied at each pixel of the image.
+Structural (non-uniform) reflection is specified via an illumination map, which can be either a single channel 
+2D image with values 0-1 controlling how much illumination is applied at each pixel of the image or a 3 channel (RGB)
+image further controlling the color of the reflection (if using RGB reflection, use_luminance must be set to False, 
+to use color information in the simulation, else RGB will be collapsed to lum only). 
+
 Note that the overall illumination level is still controlled via a single illuminance input, 
 i.e. 1000 lux; the illumination map is then linearly scaled with the illuminance input set as its average 
 (not maximum) value.
