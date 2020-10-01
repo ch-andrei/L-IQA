@@ -239,3 +239,15 @@ See existing examples of MATLAB metrics in ./iqa_metrics/.
 To make our IQA tool work with MATLAB, we call the metric's MATLAB script from Python. Sending image data 
 between Python and MATLAB processes is very slow; as a workaround, we save inputs images to two temporary .mat files, 
 and have an additional MATLAB script read these files and call the appropriate MATLAB IQA code (speedup about 10-100x).
+
+## Relevant links and miscellaneous dependencies:
+
+Metrics:
+
+TMQI: https://github.com/dvolgyes/TMQI
+
+HDRVDP: http://hdrvdp.sourceforge.net/wiki/#Download
+
+LPIPS: https://github.com/richzhang/PerceptualSimilarity (requires PyTorch, see dependencies in LPIPS project page)
+
+
