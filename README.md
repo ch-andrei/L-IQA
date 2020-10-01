@@ -44,6 +44,8 @@ for luminance masking and, finally, IQA is computed.
 
 ## Examples and use-cases
 
+Note that these scripts must be run using /L-IQA as the current working directory. 
+
 ./Examples folder contains several potential use-cases of the provided tools.
 
 1.  Perform IQA for non-standard illumination conditions and displays. Most IQA metrics assume standard 200-500 
@@ -242,9 +244,9 @@ To make our IQA tool work with MATLAB, we call the metric's MATLAB script from P
 between Python and MATLAB processes is very slow; as a workaround, we save inputs images to two temporary .mat files, 
 and have an additional MATLAB script read these files and call the appropriate MATLAB IQA code (speedup about 10-100x).
 
-## Relevant links and miscellaneous dependencies:
+## Relevant links and dependencies:
 
-Metrics:
+Requires OpenCV-python (cv2), numpy, scipy.
 
 TMQI: https://github.com/dvolgyes/TMQI
 
