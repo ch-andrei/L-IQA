@@ -39,7 +39,7 @@ and apply existing IQA metrics on the resulting stimuli.
 A Display and Degradation Model (DDM) converts digital inputs from 
 gamma-corrected pixel values to the physical luminance space and simulates 
 the influence of the ambient illumination level. The resulting signals
-are then linearized with perceptually uniform (PU) encoding [2] to account
+are then linearized with perceptually uniform (PU) encoding [1] to account
 for luminance masking and, finally, IQA is computed.
 
 ## Examples and use-cases
@@ -232,9 +232,11 @@ Example with kwargs:
 
 ##### Note for MATLAB metrics:
 
-The MATLAB Engine API for Python is required.
+Code was tested with MATLAB 19/20, the MATLAB Engine API for Python is required.
 
 See existing examples of MATLAB metrics in ./iqa_metrics/.
+
+Note that most of the IQA metrics have their own dependencies which must be satisfied.
 
 To make our IQA tool work with MATLAB, we call the metric's MATLAB script from Python. Sending image data 
 between Python and MATLAB processes is very slow; as a workaround, we save inputs images to two temporary .mat files, 
@@ -247,7 +249,14 @@ Metrics:
 TMQI: https://github.com/dvolgyes/TMQI
 
 HDRVDP: http://hdrvdp.sourceforge.net/wiki/#Download
+Requires MATLAB with Image Processing Toolbox and Statistics and Machine Learning Toolbox. 
 
-LPIPS: https://github.com/richzhang/PerceptualSimilarity (requires PyTorch, see dependencies in LPIPS project page)
+LPIPS: https://github.com/richzhang/PerceptualSimilarity
+requires PyTorch, see dependencies in LPIPS project page
 
+## References:
+
+[1] T. O. Aydın, R. K. Mantiuk, and H.-P. Seidel. Extending quality metrics
+to full luminance range images. In Human Vision and Electronic
+Imaging, pages 68060B–10. Spie, 2008.
 
