@@ -396,7 +396,8 @@ class App(QWidget):
                                              rgb_view(self.imageTest).astype(np.float) / 255.,
                                              self.simParamsReference,
                                              self.simParamsTest,
-                                             dm1=self.ddmRef, dm2=self.ddmTest)
+                                             dm1=self.dmRef,
+                                             dm2=self.dmTest)
         print('###############')
         print(iqa_qr)
         print('\n')
@@ -412,8 +413,8 @@ class App(QWidget):
                                                  apply_screen_dimming=self.applyScreenDimingReference.isChecked())
 
     def updateReferenceDisplay(self):
-        self.ddmRef = DisplayModel(L_max=self.referenceDisplayLmax.value(),
-                                   contrast_ratio=self.referenceDisplayContrast.value())
+        self.dmRef = DisplayModel(L_max=self.referenceDisplayLmax.value(),
+                                  contrast_ratio=self.referenceDisplayContrast.value())
 
     def updateAllIlluminationSimulationParameters(self):
         self.updateReferenceIlluminationSimulationParameters()
@@ -457,8 +458,8 @@ class App(QWidget):
             self.testDisplayLmax.setDisabled(False)
             self.testDisplayContrast.setDisabled(False)
 
-        self.ddmTest = DisplayModel(L_max=self.testDisplayLmax.value(),
-                                    contrast_ratio=self.testDisplayContrast.value())
+        self.dmTest = DisplayModel(L_max=self.testDisplayLmax.value(),
+                                   contrast_ratio=self.testDisplayContrast.value())
 
     def updateAllDisplay(self):
         self.updateReferenceDisplay()
@@ -475,7 +476,7 @@ class App(QWidget):
         return arr
 
     def simulateReferenceImage(self):
-        self.simulatedReferenceImageL = self.ddmRef.display_simulation(
+        self.simulatedReferenceImageL = self.dmRef.display_simulation(
             rgb_view(self.imageReference).astype(np.float) / 255.,
             self.simParamsReference.illuminant,
             use_luminance_only=self.simParamsReference.use_luminance_only,
@@ -485,7 +486,7 @@ class App(QWidget):
         self.simulatedReferenceImageView.display(array2qimage(self.simulatedReferenceImageL))
 
     def simulateTestImage(self):
-        self.simulatedTestImageL = self.ddmTest.display_simulation(
+        self.simulatedTestImageL = self.dmTest.display_simulation(
             rgb_view(self.imageTest).astype(np.float) / 255,
             self.simParamsTest.illuminant,
             use_luminance_only=self.simParamsTest.use_luminance_only,

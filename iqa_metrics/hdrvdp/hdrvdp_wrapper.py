@@ -68,4 +68,4 @@ def compute_hdr_vdp(img1, img2, **kwargs):
                                     stdout=out, stderr=err)  # redirect prints to dummy I/O streams
     mw.remove_matlab_unique_mat(path1, path2)
 
-    return res["Q"] / 100.0 if hdr_vdp_version == '2.2.2' else res["Q"]
+    return (res["Q"] / 100.0) if hdr_vdp_version == '2.2.2' else res["Q"] / 10
