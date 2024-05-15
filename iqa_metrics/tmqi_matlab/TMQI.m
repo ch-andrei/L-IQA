@@ -2,7 +2,7 @@ function [Q, S, N, s_maps, s_local] = TMQI(hdrImage, ldrImage, window)
 % ========================================================================
 % Andrei Chubarau, andrei.chubarau@mail.mcgill.com
 % minor modification to not convert from RGB to L,
-% but assume that input is already provided as luminance.
+% assuming that input is already provided as luminance.
 % ========================================================================
 % Tone Mapped image Quality Index (TMQI), Version 1.0
 % Copyright(c) 2012 Hojatollah Yeganeh and Zhou Wang
@@ -114,16 +114,21 @@ Beta = 0.7088;
 level = 5;
 weight = [0.0448 0.2856 0.3001 0.2363 0.1333];
 %--------------------
-%HDR = RGBtoYxy(hdrImage); % AndreiC: No need to convert; in our case, L is already provided
-%L_hdr = HDR(:,:,1); % AndreiC: No need to convert; in our case, L is already provided
+% AC: No need to convert with RGBtoYxy(); in our case, L is already provided
+%HDR = RGBtoYxy(hdrImage);
+%L_hdr = HDR(:,:,1);
 L_hdr = hdrImage;
 lmin = min(min(L_hdr));
 lmax = max(max(L_hdr));
 L_hdr = double(round((2^32 - 1)/(lmax - lmin)).*(L_hdr - lmin));
 %-------------------------------------------
-%L_ldr = RGBtoYxy (double(ldrImage)); % AndreiC: No need to convert; in our case, L is already provided
-% L_ldr = double(L_ldr(:,:,1)); % AndreiC: No need to convert; in our case, L is already provided
+% AC: No need to convert with RGBtoYxy(); in our case, L is already provided
+%L_ldr = RGBtoYxy (double(ldrImage));
+%L_ldr = double(L_ldr(:,:,1));
 L_ldr = (double(ldrImage));
+lmin = min(min(L_ldr));
+lmax = max(max(L_ldr));
+L_ldr = double(round(255/(lmax - lmin)).*(L_ldr - lmin));  % AC: rescale LDR image to 0-255 to be consistent
 %----------- structural fidelity -----------------
 [S s_local s_maps] = StructuralFidelity(L_hdr, L_ldr,level,weight, window);
 %--------- statistical naturalness ---------------

@@ -1,125 +1,75 @@
-from DisplayModels.display_model_simul import DisplayDegradationModel, new_simul_params
-from utils.image_processing.pu2_encoding import *
+import logging
+
+from DisplayModels.display_model_simul import DisplayDegradationModel, iqa_simul_params
+from DisplayModels.display_model import DisplayModel
+from utils.image_processing.pu21_encoding import PUTransform, PU21_TYPE_BANDING_GLARE
 
 from utils.misc.timer import Timer
-from utils.misc.logger import Logger
+from utils.misc.logger import get_logger
 
 from iqa_metrics.metrics import *
 
 
-_epsilon = 1e-6
-
-
 class IqaTool(object):
     def __init__(self,
-                 iqa_to_use=None,
-                 display_model_device="",  # ex: 'samsung_tm800'
-                 ddm_use_luminance=True,  # RGB or luminance
+                 iqa_variants=None,
+                 device_profile_name=None,  # ex: 'samsung_tm800'
                  use_pu_encoding=True,
-                 tmqi_use_original=False,  # use the original Matlab code or Python implementation for TMQI
-                 lpips_use_gpu=True,
                  verbose=False
                  ):
         """
-        :param iqa_to_use:
-        :param display_model_device:
-        :param ddm_use_luminance:
-            normally, this should set to True, since PU encoding is intended to be used with luminance signal
+        :param iqa_variants:
+        :param device_profile_name:
         :param use_pu_encoding:
-            normally, this should set to True, since PU encoding is required for accurate IQA in non-ideal conditions
-        :param tmqi_use_original:
-        :param lpips_use_gpu:
-        :param fid_use_gpu:
+            normally, this should be set to True, since PU encoding is required for accurate IQA in non-ideal conditions
         :param verbose:
         """
 
-        self.log = Logger(verbose)
+        self.log = get_logger(name="IqaTool", level=logging.DEBUG if verbose else logging.WARNING, stdout=verbose)
 
         # initialize display model
-        self.ddm = DisplayDegradationModel(display_model_device=display_model_device)
-        self.ddm_use_luminance = ddm_use_luminance
-        self.use_pu_encoding = use_pu_encoding
+        self.ddm = DisplayDegradationModel(device_profile_name)
 
-        if iqa_to_use is not None:
-            if isinstance(iqa_to_use, list) and len(iqa_to_use) > 0:
-                self.iqa_to_use = iqa_to_use
+        self.use_pu_encoding = use_pu_encoding
+        self.pu_encoder = PUTransform(
+            encoding_type=PU21_TYPE_BANDING_GLARE,
+            normalize=False,
+            normalize_range_srgb=False,  # always rescale to [0.0, 1.0] if normalizing
+            L_min_0=False,  # minimum L value is 0.0cd/m2 not 0.005cd/m2
+        )
+
+        if iqa_variants is not None:
+            if isinstance(iqa_variants, list) and len(iqa_variants) > 0:
+                self.iqa_variants = iqa_variants
             else:
-                self.iqa_to_use = [iqa_to_use]
+                self.iqa_variants = [iqa_variants]
         else:
             # default metrics
-            self.iqa_to_use = [
+            self.iqa_variants = [
                 iqa_mse,
                 iqa_psnr,
                 iqa_ssim,
+                iqa_ssim_py,
                 iqa_msssim,
-                iqa_mssim_py,
-                iqa_lpips,
+                iqa_msssim_py,
                 iqa_tmqi,
                 iqa_fsim,
                 iqa_vsi,
                 iqa_mdsi,
-                iqa_hdr_vdp
+                iqa_hdr_vdp,
+                iqa_lpips,
+                iqa_vtamiq
             ]
 
-        iqa_initialize_metrics(self.iqa_to_use,
-                               tmqi_use_original=tmqi_use_original,
-                               lpips_use_gpu=lpips_use_gpu)
+        iqa_initialize_metrics(self.iqa_variants)
 
         # timers for computation runtime stats
-        self.timers_iqa = {iqa_variant.name: Timer(iqa_variant.name) for iqa_variant in self.iqa_to_use}
-        self.verbose = verbose
-
-    def get_iqa_inputs(self, iqa_variant, img_L, dm, img_pu=None):
-        """
-        Pick Luminance or PU encoded inputs based on the queried IQA type and current configuration
-        :param iqa_variant:
-        :param img_L:
-        :return:
-        """
-        # hdr-vdp requires luminance values in cd/m2, not PU encoded results
-        if iqa_variant.name == iqa_hdr_vdp.name or not self.use_pu_encoding:
-            data_range = dm.get_L_upper_bound()  # Note: HDR-VDP-2 does not use this
-            self.log('Using DM luminance for iqa-variant {}'.format(iqa_variant.name))
-            return img_L, data_range
-        else:
-            if img_pu is None:
-                img_pu = pu2_encode_offset(img_L)
-            data_range = pu2e_data_range
-            self.log('Using PU-encoded DM luminance for iqa-variant {}'.format(iqa_variant))
-            return img_pu, data_range
-
-    def compute_iqa(self, img1, img2,
-                    illuminant=None,
-                    illumination_map=None,
-                    apply_reflection=True,
-                    apply_screen_dimming=False,
-                    ddm_use_luminance=True,
-                    ):
-        """
-        Use this function to compute IQA between two images.
-        :param img1:
-        :param img2:
-        :param illuminant: ambient illumination conditions in lux
-        :param illumination_map: illumination map if illumination is non-uniform (height x width, values in range 0-1)
-        :param apply_reflection:
-        :param apply_screen_dimming:
-        :param ddm_use_luminance:
-        :return:
-        """
-        sim_params = new_simul_params(
-            illuminant=illuminant,
-            illumination_map=illumination_map,
-            use_luminance_only=ddm_use_luminance,
-            apply_reflection=apply_reflection,
-            apply_screen_dimming=apply_screen_dimming)
-
-        return self.compute_iqa_custom(img1, img2, sim_params1=sim_params, sim_params2=sim_params)
+        self.timers_iqa = {iqa_variant.name: Timer(iqa_variant.name) for iqa_variant in self.iqa_variants}
 
     def compute_iqa_custom(self, img1, img2,
-                           sim_params1=None, sim_params2=None,
-                           dm1=None, dm2=None,
-                           return_simulated_L=False,
-                           iqa_to_use=None):
+                           sim_params1: iqa_simul_params=None, sim_params2: iqa_simul_params=None,
+                           dm1: DisplayModel=None, dm2: DisplayModel=None,
+                           return_simulated_L=False, iqa_variants=None):
         """
         Use this function to compute IQA between two images given the custom simulation parameters.
         :param img1: reference image
@@ -129,38 +79,62 @@ class IqaTool(object):
         :param dm1: display model to use for simulating image 1
         :param dm2: display model to use for simulating image 2
         :param return_simulated_L:
-        :param iqa_to_use: which IQA metrics to compute
+        :param iqa_variants: which IQA metrics to compute
         :return:
         """
 
-        if iqa_to_use is None:
-            iqa_to_use = self.iqa_to_use
+        if iqa_variants is None:
+            iqa_variants = self.iqa_variants
 
         img_1_L, dm1 = self.ddm.simulate_display(img1, sim_params1, dm=dm1, return_dm=True)
         img_2_L, dm2 = self.ddm.simulate_display(img2, sim_params2, dm=dm2, return_dm=True)
 
+        # compute PU-encoded luminance if PU-encoding is enabled and required by any of the used metrics
+        img_1_pu = None
+        img_2_pu = None
+        if self.use_pu_encoding and any([iqa_variant.use_pu_encoding for iqa_variant in iqa_variants]):
+            img_1_pu = self.pu_encoder(img_1_L)
+            img_2_pu = self.pu_encoder(img_2_L)
+
+        self.log.info(
+            "img_1_L {}, {}, {}\n".format(img_1_L.min(), img_1_L.mean(), img_1_L.max()) +
+            "img_2_L {}, {}, {}\n".format(img_2_L.min(), img_2_L.mean(), img_2_L.max()) +
+            ("" if img_1_pu is None else
+                "img_1_pu {}, {}, {}\n".format(img_1_pu.min(), img_1_pu.mean(), img_1_pu.max())) +
+            ("" if img_2_pu is None else
+                "img_2_pu {}, {}, {}\n".format(img_2_pu.min(), img_2_pu.mean(), img_2_pu.max()))
+        )
+
         output = {}
-        for iqa_variant in iqa_to_use:
+        for iqa_variant in iqa_variants:
             iqa_name = iqa_variant.name
             iqa_compute_function = iqa_variant.compute_function
 
-            timer_iqa = self.timers_iqa[iqa_name]
-            timer_iqa.start()
+            timer_crt = self.timers_iqa[iqa_name]
+            timer_crt.start()
 
-            img1_iqa, data_range1 = self.get_iqa_inputs(iqa_variant, img_1_L, dm1)
-            img2_iqa, data_range2 = self.get_iqa_inputs(iqa_variant, img_2_L, dm2)
+            # 1. check if PU encoding is globally enabled
+            # 2. check if PU encoding is required by the IQA metric
+            use_pu_encoding = self.use_pu_encoding and iqa_variant.use_pu_encoding
 
-            data_range = max(data_range1, data_range2)  # get the highest value between dm1 and dm2
+            if use_pu_encoding:
+                self.log.info(f'Using PU-encoded display luminance for iqa-variant={iqa_variant.name}')
+                data_format = DATA_FORMAT_PU
+                data_range = (self.pu_encoder.P_min, self.pu_encoder.P_max)
+                img_1_iqa = img_1_pu
+                img_2_iqa = img_2_pu
 
-            Q = iqa_func_wrapper(iqa_compute_function, img1_iqa, img2_iqa, data_range=data_range)
+            else:
+                self.log.info(f'Using simulated display luminance for iqa-variant={iqa_variant.name}')
+                data_format = DATA_FORMAT_LUM
+                data_range = (self.pu_encoder.L_min, self.pu_encoder.L_max)
+                img_1_iqa = img_1_L
+                img_2_iqa = img_2_L
 
-            self.log(
-                "img1_iqa", img1_iqa.min(), img1_iqa.mean(), img1_iqa.max(), '\n',
-                "img2_iqa", img2_iqa.min(), img2_iqa.mean(), img2_iqa.max(), '\n',
-                'iqa value:', Q,
-            )
+            Q = iqa_func_wrapper(iqa_compute_function, img_1_iqa, img_2_iqa,
+                                 data_format=data_format, data_range=data_range)
 
-            self.log("{} took {} seconds...".format(timer_iqa.name, timer_iqa.stop()))
+            self.log.info(f"{iqa_variant.name} Q={Q} (computed in {timer_crt.stop()} sec)\n")
 
             output[iqa_name] = Q
 

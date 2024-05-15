@@ -251,10 +251,13 @@ Requires OpenCV-python (cv2), numpy, scipy.
 TMQI: https://github.com/dvolgyes/TMQI
 
 HDRVDP: http://hdrvdp.sourceforge.net/wiki/#Download
-Requires MATLAB with Image Processing Toolbox and Statistics and Machine Learning Toolbox. 
+Requires MATLAB with "Image Processing Toolbox" and "Statistics and Machine Learning Toolbox". 
 
 LPIPS: https://github.com/richzhang/PerceptualSimilarity
 requires PyTorch, see dependencies in LPIPS project page
+
+VTAMIQ: https://github.com/ch-andrei/vtamiq
+requires PyTorch
 
 ## References:
 

@@ -100,7 +100,7 @@ def pu2_encode(L):
     uniform values P.
 
     This is meant to be used with display-referred quality metrics - the
-    image values much correspond to the luminance emitted from the target
+    image values must correspond to the luminance emitted from the target
     HDR display.
 
     This is an improved encoding described in detail in the paper:

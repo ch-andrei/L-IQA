@@ -4,11 +4,15 @@ import numpy as np
 from utils.image_processing.image_tools import img2array, imread
 
 
-# sources:
-# https://en.wikipedia.org/wiki/Relative_luminance
-# https://www.cl.cam.ac.uk/~rkm38/pdfs/mantiuk2016perceptual_display.pdf
-# converts to linear RGB then to luminance
 def srgb2rgb(rgb, gamma=2.4):
+    """
+        converts from sRGB to linear RGB
+        https://en.wikipedia.org/wiki/Relative_luminance
+        https://www.cl.cam.ac.uk/~rkm38/pdfs/mantiuk2016perceptual_display.pdf
+    :param rgb:
+    :param gamma:
+    :return:
+    """
     # convert to linear rgb
     c = 0.04045
     a = 0.055
@@ -18,10 +22,16 @@ def srgb2rgb(rgb, gamma=2.4):
 
 
 def rgb2srgb(rgb_lin, gamma=2.4):
+    """
+    linear RGB to sRGB
+    :param rgb_lin:
+    :param gamma:
+    :return:
+    """
     c = 0.0031308
     a = 0.055
     rgb = rgb_lin * 12.92
-    rgb[rgb_lin > c] = (1 + a) * np.power(rgb_lin[rgb_lin > c], 1 / gamma) - a
+    rgb[rgb_lin > c] = (1.0 + a) * np.power(rgb_lin[rgb_lin > c], 1.0 / gamma) - a
     return rgb
 
 

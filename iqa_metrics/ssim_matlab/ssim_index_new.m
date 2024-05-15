@@ -1,3 +1,4 @@
+% NOTE: this is used by msssim.m
 function [mssim, ssim_map, mcs, cs_map] = ssim_index_new(img1, img2, K, win)
 
 if (nargin < 2 || nargin > 4)
@@ -16,52 +17,52 @@ end
 
 if (nargin == 2)
    if ((M < 11) || (N < 11))
-	   mssim = -Inf;
-	   ssim_map = -Inf;
+      mssim = -Inf;
+      ssim_map = -Inf;
       return
    end
-   win = fspecial('gaussian', 11, 1.5);	%
-   K(1) = 0.01;										% default settings
-   K(2) = 0.03;										%
+   win = fspecial('gaussian', 11, 1.5);   %
+   K(1) = 0.01;                              % default settings
+   K(2) = 0.03;                              %
 end
 
 if (nargin == 3)
    if ((M < 11) || (N < 11))
-	   mssim = -Inf;
-	   ssim_map = -Inf;
+      mssim = -Inf;
+      ssim_map = -Inf;
       return
    end
    win = fspecial('gaussian', 11, 1.5);
    if (length(K) == 2)
       if (K(1) < 0 || K(2) < 0)
-		   mssim = -Inf;
-   		ssim_map = -Inf;
-	   	return;
+         mssim = -Inf;
+         ssim_map = -Inf;
+         return;
       end
    else
-	   mssim = -Inf;
-   	ssim_map = -Inf;
-	   return;
+      mssim = -Inf;
+      ssim_map = -Inf;
+      return;
    end
 end
 
 if (nargin == 4)
    [H W] = size(win);
    if ((H*W) < 4 || (H > M) || (W > N))
-	   mssim = -Inf;
-	   ssim_map = -Inf;
+      mssim = -Inf;
+      ssim_map = -Inf;
       return
    end
    if (length(K) == 2)
       if (K(1) < 0 || K(2) < 0)
-		   mssim = -Inf;
-   		ssim_map = -Inf;
-	   	return;
+         mssim = -Inf;
+         ssim_map = -Inf;
+         return;
       end
    else
-	   mssim = -Inf;
-   	ssim_map = -Inf;
-	   return;
+      mssim = -Inf;
+      ssim_map = -Inf;
+      return;
    end
 end
 
@@ -84,7 +85,7 @@ if (C1 > 0 & C2 > 0)
 else
    numerator1 = 2*mu1_mu2 + C1;
    numerator2 = 2*sigma12 + C2;
-	denominator1 = mu1_sq + mu2_sq + C1;
+   denominator1 = mu1_sq + mu2_sq + C1;
    denominator2 = sigma1_sq + sigma2_sq + C2;
 
    ssim_map = ones(size(mu1));

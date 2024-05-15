@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+import os
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap, QPalette, QPainter
 from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
@@ -14,6 +15,8 @@ class QImageViewer(QMainWindow):
 
         self.printer = QPrinter()
         self.scaleFactor = 0.0
+
+        self.fileName = None
 
         self.imageLabel = QLabel()
         self.imageLabel.setBackgroundRole(QPalette.Base)
@@ -33,15 +36,19 @@ class QImageViewer(QMainWindow):
         self.setWindowTitle("Image Viewer")
         self.resize(800, 600)
 
-    def open(self):
+    def open(self, file_name = None):
         options = QFileDialog.Options()
-        # fileName = QFileDialog.getOpenFileName(self, "Open File", QDir.currentPath())
-        fileName, _ = QFileDialog.getOpenFileName(self, 'QFileDialog.getOpenFileName()', '',
+        # file_name = QFileDialog.getOpenFileName(self, "Open File", QDir.currentPath())
+        if file_name is None:
+            self.fileName, _ = QFileDialog.getOpenFileName(self, 'QFileDialog.getOpenFileName()', '',
                                                   'Images (*.png *.jpeg *.jpg *.bmp *.gif)', options=options)
-        if fileName:
-            self.image = QImage(fileName)
+        else :
+            self.fileName = file_name
+
+        if self.fileName:
+            self.image = QImage(self.fileName)
             if self.image.isNull():
-                QMessageBox.information(self, "Image Viewer", "Cannot load %s." % fileName)
+                QMessageBox.information(self, "Image Viewer", "Cannot load %s." % self.fileName)
                 return
 
             self.imageLabel.setPixmap(QPixmap.fromImage(self.image))
@@ -55,9 +62,21 @@ class QImageViewer(QMainWindow):
             if not self.fitToWindowAct.isChecked():
                 self.imageLabel.adjustSize()
 
+    def get_full_path(self):
+        return self.fileName
+
+    def get_dir(self):
+        return os.path.dirname(self.fileName)
+
+    def get_basename(self):
+        return os.path.basename(self.fileName)
+
+    def get_basename_no_ext(self):
+        return os.path.splitext(self.get_basename())[0]
+
     def display(self, image):
         if image.isNull():
-            QMessageBox.information(self, "Image Viewer", "Cannot load %s." % fileName)
+            QMessageBox.information(self, "Image Viewer", "Cannot load %s." % self.fileName)
             return
 
         self.imageLabel.setPixmap(QPixmap.fromImage(image))
@@ -123,7 +142,7 @@ class QImageViewer(QMainWindow):
         self.zoomInAct = QAction("Zoom &In (25%)", self, shortcut="Ctrl++", enabled=False, triggered=self.zoomIn)
         self.zoomOutAct = QAction("Zoom &Out (25%)", self, shortcut="Ctrl+-", enabled=False, triggered=self.zoomOut)
         self.normalSizeAct = QAction("&Normal Size", self, shortcut="Ctrl+S", enabled=False, triggered=self.normalSize)
-        self.fitToWindowAct = QAction("&Fit to Window", self, enabled=False, checkable=True, shortcut="Ctrl+F",
+        self.fitToWindowAct = QAction("&Fit to Window", self, enabled=True, checkable=True, shortcut="Ctrl+F",
                                       triggered=self.fitToWindow)
         self.aboutAct = QAction("&About", self, triggered=self.about)
         self.aboutQtAct = QAction("About &Qt", self, triggered=qApp.aboutQt)

@@ -3,6 +3,10 @@ import numpy as np
 import scipy.stats as st
 
 
+def ainfo(tag, t):
+    print('info:', tag, t.shape, (t.min()), (t.mean()), (t.max()))
+
+
 # kind of like non-pretty json.dumps(dictionary)
 def recursive_dict_print(dictionary):
     print("{", end="")
@@ -85,8 +89,7 @@ def gkern(kernlen=21, nsig=3):
     return kern1d/kern1d.sum()
 
 
-def lerp(a, b, ratio=0.5):
-    ratio = min(1, max(0, ratio))
+def lerp(a, b, ratio):
     return a + (b - a) * ratio
 
 
@@ -115,7 +118,14 @@ def lerp_list_gau(l, ratio=0.5, nsig=10):
     return weighted.sum(axis=0) if len(lnp.shape) > 1 else weighted.sum()
 
 
-def split(list, num_splits, append_leftover_to_last=False):
+def split_list(list, num_splits, append_leftover_to_last=False):
+    """
+    distributes a list of tasks into N splits
+    :param list:
+    :param num_splits:
+    :param append_leftover_to_last: add leftover tasks to last thread or distribute to all threads equally
+    :return:
+    """
     n = len(list)
     list_per_split = [[] for _ in range(num_splits)]
     num_per_split = int(len(list) / num_splits)

@@ -256,6 +256,7 @@ class TMQI(Metric):
         N = pb * pc
         return N
 
+
 class TMQIr(TMQI):
     def __init__(self, *args, **kwargs):
         super().__init__()

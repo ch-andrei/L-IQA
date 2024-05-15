@@ -1,2 +1,5 @@
-hdr-vdp-2_matlab/
-pysaliency/
+./hdr-vdp-2_matlab
+./pysaliency
+./hdrvdp
+
+/vtamiq/ViT/weights/**.npz

@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from PIL import Image
 
 
 # simple TMO (Schlick 1994)
@@ -98,7 +99,7 @@ def file_path(name, path):
 
 
 def imwrite(name, path, img, isfloat=True):
-    img_u = (np.clip(img, 0, 1) * 255).astype(np.uint8) if isfloat else img
+    img_u = (np.round(np.clip(img, 0., 1.) * 255)).astype(np.uint8) if isfloat else img
     filepath = file_path(name, path)
     print("imwrite() writing to", filepath)
     cv2.imwrite(filepath, img_u)
@@ -112,7 +113,7 @@ def imread_unknown_extension(img_name_no_ext, img_path, extensions=None,
                              convert_to_luminance=False,
                              return_filename=False,
                              rescale_if_too_big=True):
-    if img_name_no_ext[-3] == '.':
+    if len(img_name_no_ext) > 3 and img_name_no_ext[-3] == '.':
         print("Warning: input file name [{}] is expected to have no extension.".format(img_name_no_ext))
 
     if extensions is None:
@@ -167,7 +168,7 @@ def imread(img_name, img_path,
     if clip_negative:
         img = np.maximum(img, 0)
     if convert_to_luminance or format_float:
-        img = img.astype(np.float) / 255.
+        img = img.astype(float) / 255.
     if convert_to_luminance:
         from utils.image_processing.color_spaces import srgb2lum  # important at runtime to avoid circular imports
         return srgb2lum(img)
@@ -219,7 +220,7 @@ def loop_display(img_dict, ind_max, delay=1000):
 
 def ensure3d(ar):
     ar = np.array(ar)
-    if len(ar.shape) == 2:
+    if len(ar.shape) < 3:
         ar = np.atleast_3d(ar)
-        ar = np.repeat(ar, 3, axis=2)
+        ar = np.repeat(ar, 3, axis=-1)
     return ar

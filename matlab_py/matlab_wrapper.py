@@ -53,13 +53,13 @@ def get_matlab_instance():
     return matlab_eng
 
 
-def imgs_to_unique_mat(img1, img2=None, num_chars=20, dict_tag="tag", extra_identifier="id"):
+def imgs_to_unique_mat(img1, img2=None, num_chars=20, dict_tag="tag", identifier="id"):
     uuid_str = str(uuid.uuid4())
     random_inds = np.array(np.random.rand(num_chars) * len(uuid_str), np.uint8)
     final_str = ''.join([uuid_str[i] for i in random_inds])
 
-    path1 = matlab_wrapper_temp_folder + "/" + extra_identifier + "-" + final_str + "_1.mat"
-    path2 = matlab_wrapper_temp_folder + "/" + extra_identifier + "-" + final_str + "_2.mat"
+    path1 = matlab_wrapper_temp_folder + "/" + identifier + "-" + final_str + "_1.mat"
+    path2 = matlab_wrapper_temp_folder + "/" + identifier + "-" + final_str + "_2.mat"
 
     scipy.io.savemat(path1, mdict={dict_tag: img1})
     # image 2 is not always provided

@@ -96,7 +96,7 @@ end
 
 if (method == 'product')
 %   overall_mssim = prod(mssim_array.^weight);
-   overall_mssim = prod(mcs_array(1:level-1).^weight(1:level-1))*(mssim_array(level).^weight(level));
+   overall_mssim = prod(mcs_array(1:level-1) .^ weight(1:level-1)) * (mssim_array(level) .^ weight(level));
 else
    weight = weight./sum(weight);
    overall_mssim = sum(mcs_array(1:level-1).*weight(1:level-1)) + mssim_array(level).*weight(level);

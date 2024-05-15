@@ -21,8 +21,7 @@ class DistModel(BaseModel):
     def initialize(self, model='net-lin', net='alex', colorspace='Lab',
                    pnet_rand=False, pnet_tune=False, model_path=None,
                    use_gpu=True, printNet=False,
-                   is_train=False, lr=.0001, beta1=0.5, version='0.1', gpu_ids=[0],
-                   attention_type=None, attention_config=None):
+                   is_train=False, lr=.0001, beta1=0.5, version='0.1', gpu_ids=[0]):
         '''
         INPUTS
             model - ['net-lin'] for linearly calibrated network
@@ -49,10 +48,6 @@ class DistModel(BaseModel):
         self.gpu_ids = gpu_ids
         self.model_name = '%s [%s]' % (model, net)
 
-        # if using pre-trained original LPIPS, disable attention
-        if not is_train:
-            attention_type = None
-
         if self.model == "a2":
             print("PNet type: PNetA2.")
 
@@ -68,16 +63,11 @@ class DistModel(BaseModel):
             print("PNet type: PNetLin with", net)
 
             self.net = networks.PNetLin(pnet_type=net, pnet_rand=pnet_rand, pnet_tune=pnet_tune,
-                                        use_dropout=True, version=version,
-                                        attention_type=attention_type,
-                                        attention_config=attention_config)
+                                        use_dropout=True, version=version)
 
             if model_path is None:
                 import inspect
-                if attention_type == "SAGAN":
-                    model_path = os.path.abspath(
-                        os.path.join(inspect.getfile(self.initialize), '..', 'weights/sagan/best.pth'))
-                elif self.pnet_type == "resnet50":
+                if self.pnet_type == "resnet50":
                     model_path = os.path.abspath(
                         os.path.join(inspect.getfile(self.initialize), '..', 'weights/resnet50/best.pth'))
                 else:
@@ -86,7 +76,7 @@ class DistModel(BaseModel):
 
                     kw = {}
                     if not use_gpu:
-                        kw['map_location'] = 'cpu'
+                        kw['map_location'] = torch.device('cpu') #'cpu'
 
                     if not is_train:
                         print('Loading LPIPS model from: %s' % model_path)
@@ -95,9 +85,7 @@ class DistModel(BaseModel):
                 self.model_path = model_path
 
         elif self.model == 'net':  # pretrained network
-            self.net = networks.PNetLin(pnet_rand=pnet_rand, pnet_type=net,
-                                        attention_type=attention_type,
-                                        attention_config=attention_config)
+            self.net = networks.PNetLin(pnet_rand=pnet_rand, pnet_type=net)
         else:
             raise ValueError("Model [%s] not recognized." % self.model)
 

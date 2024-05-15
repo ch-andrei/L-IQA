@@ -44,9 +44,9 @@ def main():
 
     for lux_test in lux_tests:
         sim_params_ref = new_simul_params(illuminant=lux_ref, illumination_map=illumination_map,
-                                          apply_screen_dimming=False, use_luminance_only=True)
+                                          apply_screen_dimming=False, use_luminance_only=False)
         sim_params_test = new_simul_params(illuminant=lux_test, illumination_map=illumination_map,
-                                           apply_screen_dimming=False, use_luminance_only=True)
+                                           apply_screen_dimming=False, use_luminance_only=False)
 
         Qs = iqa_tool.compute_iqa_custom(img_ref, img_test, sim_params_ref, sim_params_test)
 

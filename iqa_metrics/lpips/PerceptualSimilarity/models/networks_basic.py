@@ -75,8 +75,7 @@ class PNetA2(nn.Module):
 
 # Learned perceptual metric
 class PNetLin(nn.Module):
-    def __init__(self, pnet_type='alex', pnet_rand=False, pnet_tune=False, use_dropout=True, version='0.1',
-                 attention_type=None, attention_config=None):
+    def __init__(self, pnet_type='alex', pnet_rand=False, pnet_tune=False, use_dropout=True, version='0.1'):
         super(PNetLin, self).__init__()
 
         self.pnet_type = pnet_type
@@ -101,44 +100,12 @@ class PNetLin(nn.Module):
 
         self.net = net_type(pretrained=not self.pnet_rand, requires_grad=self.pnet_tune)
 
-        self.attention_type = attention_type
-
-        if attention_type is None or not attention_type:
-            # original implementation
-            print("LPIPS using NetLinLayer.")
-            self.lin0 = NetLinLayer(self.chns[0], use_dropout=use_dropout)
-            self.lin1 = NetLinLayer(self.chns[1], use_dropout=use_dropout)
-            self.lin2 = NetLinLayer(self.chns[2], use_dropout=use_dropout)
-            self.lin3 = NetLinLayer(self.chns[3], use_dropout=use_dropout)
-            self.lin4 = NetLinLayer(self.chns[4], use_dropout=use_dropout)
-            self.diff_net = [self.lin0, self.lin1, self.lin2, self.lin3, self.lin4]
-        else:
-            if attention_type == "SAGAN":
-                print("LPIPS using SAGAN Self-Attention modules.")
-                self.at0 = NetLinSelfAttentionSagan(self.chns[0], use_dropout=use_dropout)
-                self.at1 = NetLinSelfAttentionSagan(self.chns[1], use_dropout=use_dropout)
-                self.at2 = NetLinSelfAttentionSagan(self.chns[2], use_dropout=use_dropout)
-                self.at3 = NetLinSelfAttentionSagan(self.chns[3], use_dropout=use_dropout)
-                self.at4 = NetLinSelfAttentionSagan(self.chns[4], use_dropout=use_dropout)
-            # elif attention_type == "BERT-small":
-            #     print("LPIPS using BERT-small Self-Attention modules.")
-            #     assert attention_config is not None
-            #     self.at0 = NetLinSelfAttentionBertSmall(attention_config, self.chns[0], use_dropout=use_dropout)
-            #     self.at1 = NetLinSelfAttentionBertSmall(attention_config, self.chns[1], use_dropout=use_dropout)
-            #     self.at2 = NetLinSelfAttentionBertSmall(attention_config, self.chns[2], use_dropout=use_dropout)
-            #     self.at3 = NetLinSelfAttentionBertSmall(attention_config, self.chns[3], use_dropout=use_dropout)
-            #     self.at4 = NetLinSelfAttentionBertSmall(attention_config, self.chns[4], use_dropout=use_dropout)
-            # elif attention_type == "BERT":
-            #     print("LPIPS using BERT Self-Attention modules.")
-            #     assert attention_config is not None
-            #     self.at0 = NetLinSelfAttentionBert(attention_config, self.chns[0])
-            #     self.at1 = NetLinSelfAttentionBert(attention_config, self.chns[1])
-            #     self.at2 = NetLinSelfAttentionBert(attention_config, self.chns[2])
-            #     self.at3 = NetLinSelfAttentionBert(attention_config, self.chns[3])
-            #     self.at4 = NetLinSelfAttentionBert(attention_config, self.chns[4])
-            else:
-                raise TypeError("Unsupported attention_type [{}]".format(attention_type))
-            self.diff_net = [self.at0, self.at1, self.at2, self.at3, self.at4]
+        self.lin0 = NetLinLayer(self.chns[0], use_dropout=use_dropout)
+        self.lin1 = NetLinLayer(self.chns[1], use_dropout=use_dropout)
+        self.lin2 = NetLinLayer(self.chns[2], use_dropout=use_dropout)
+        self.lin3 = NetLinLayer(self.chns[3], use_dropout=use_dropout)
+        self.lin4 = NetLinLayer(self.chns[4], use_dropout=use_dropout)
+        self.diff_net = [self.lin0, self.lin1, self.lin2, self.lin3, self.lin4]
 
     def forward(self, in0, in1, retPerLayer=False):
         # print('input.shape', in0.shape, in1.shape)
@@ -194,118 +161,6 @@ class NetLinLayer(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-
-class SelfAttentionSagan(nn.Module):
-    """ Self attention Layer"""
-
-    def __init__(self, in_dim, out_dim=None, k=1):
-        super(SelfAttentionSagan, self).__init__()
-
-        if out_dim is None:
-            out_dim = in_dim
-
-        self.out_dim = out_dim
-
-        self.query_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim // k, kernel_size=1)
-        self.key_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim // k, kernel_size=1)
-        self.value_conv = nn.Conv2d(in_channels=in_dim, out_channels=out_dim, kernel_size=1)
-        self.gamma = nn.Parameter(torch.zeros(1))
-
-        self.softmax = nn.Softmax(dim=-1)  #
-
-    def forward(self, x):
-        """
-            inputs :
-                x : input feature maps( B X C X W X H)
-            returns :
-                out : self attention value + input feature
-                attention: B X N X N (N is Width*Height)
-        """
-        m_batchsize, C, width, height = x.size()
-        # print('x.size', m_batchsize, C, width, height)
-        x = x.float()
-        proj_query = self.query_conv(x).view(m_batchsize, -1, width * height).permute(0, 2, 1)  # B X CX(N)
-        proj_key = self.key_conv(x).view(m_batchsize, -1, width * height)  # B X C x (*W*H)
-        energy = torch.bmm(proj_query, proj_key)  # transpose check
-        attention = self.softmax(energy)  # BX (N) X (N)
-        proj_value = self.value_conv(x).view(m_batchsize, -1, width * height)  # B X C X N
-
-        out = torch.bmm(proj_value, attention.permute(0, 2, 1))
-        out = out.view(m_batchsize, self.out_dim, width, height)
-
-        # out = self.gamma * out + x
-        return out
-
-
-class NetLinSelfAttentionSagan(nn.Module):
-    ''' A single linear layer which does a 1x1 conv '''
-    def __init__(self, chn_in, use_dropout=False):
-        # print("NetLinLayer chn_in", chn_in)
-        super(NetLinSelfAttentionSagan, self).__init__()
-
-        layers = [nn.Dropout(), ] if use_dropout else []
-        layers += [SelfAttentionSagan(chn_in, 1), ]
-        self.model = nn.Sequential(*layers)
-
-    def forward(self, x):
-        return self.model(x)
-
-
-# class NetLinSelfAttentionBertSmall(nn.Module):
-#     def __init__(self, attention_config, chn_dim, use_dropout=True):
-#         super(NetLinSelfAttentionBertSmall, self).__init__()
-#
-#         bert_config = BertConfig.from_dict(attention_config)
-#
-#         # scale input size to to Bert dimension
-#         self.features_scale = nn.Linear(chn_dim, bert_config.hidden_size)
-#
-#         self.register_buffer("attention_mask", torch.tensor(1.0))
-#         self.model = Learned2DRelativeSelfAttention(bert_config, output_attentions=False)
-#
-#         layers = [nn.Dropout(), ] if use_dropout else []
-#         layers += [nn.Conv2d(bert_config.hidden_size, 1, 1, stride=1, padding=0, bias=False), ]
-#         self.classifier = nn.Sequential(*layers)
-#
-#         print("self.classifier.requires_grad", self.classifier.requires_grad)
-#
-#     def forward(self, x):
-#         x = x.permute(0, 2, 3, 1)  # transpose for bert
-#         x = self.features_scale(x)
-#         x = self.model(x, self.attention_mask)
-#         x = x.permute(0, 3, 1, 2)  # transpose after bert
-#         return self.classifier(x)
-#
-#
-# # from self_attention.models.bert import BertAttention, BertConfig
-# class NetLinSelfAttentionBert(nn.Module):
-#     def __init__(self, attention_config, chn_dim):
-#         super(NetLinSelfAttentionBert, self).__init__()
-#
-#         bert_config = BertConfig.from_dict(attention_config)
-#
-#         # scale input size to to Bert dimension
-#         self.features_scale = nn.Linear(chn_dim, bert_config.hidden_size)
-#
-#         self.register_buffer("attention_mask", torch.tensor(1.0))
-#         self.attention = BertAttention(bert_config, output_attentions=False)
-#
-#         intermediate_size = bert_config.hidden_size
-#
-#         self.intermediate = nn.Sequential(
-#             nn.Dropout(),
-#             nn.Conv2d(bert_config.hidden_size, intermediate_size, 1, stride=1, padding=0, bias=False),
-#             nn.Conv2d(intermediate_size, 1, 1, stride=1, padding=0, bias=False),
-#         )
-#
-#     def forward(self, x):
-#         x = x.permute(0, 2, 3, 1)
-#         x = self.features_scale(x)
-#         x = self.attention(x, self.attention_mask)
-#         x = x.permute(0, 3, 2, 1)
-#         x = self.intermediate(x)
-#         return x
-#
 
 class Dist2LogitLayer(nn.Module):
     ''' takes 2 distances, puts through fc layers, spits out value between [0,1] (if use_sigmoid is True) '''

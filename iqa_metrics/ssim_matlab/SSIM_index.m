@@ -88,75 +88,75 @@ end
 
 if (nargin == 2)
    if ((M < 11) || (N < 11))
-	   ssim_index = -Inf;
-	   ssim_map = -Inf;
+      ssim_index = -Inf;
+      ssim_map = -Inf;
       return
    end
-   window = fspecial('gaussian', 11, 1.5);	%
-   K(1) = 0.01;								      % default settings
-   K(2) = 0.03;								      %
+   window = fspecial('gaussian', 11, 1.5);   %
+   K(1) = 0.01;                              % default settings
+   K(2) = 0.03;                              %
    L = 255;                                  %
 end
 
 if (nargin == 3)
    if ((M < 11) || (N < 11))
-	   ssim_index = -Inf;
-	   ssim_map = -Inf;
+      ssim_index = -Inf;
+      ssim_map = -Inf;
       return
    end
    window = fspecial('gaussian', 11, 1.5);
    L = 255;
    if (length(K) == 2)
       if (K(1) < 0 || K(2) < 0)
-		   ssim_index = -Inf;
-   		ssim_map = -Inf;
-	   	return;
+         ssim_index = -Inf;
+         ssim_map = -Inf;
+         return;
       end
    else
-	   ssim_index = -Inf;
-   	ssim_map = -Inf;
-	   return;
+      ssim_index = -Inf;
+      ssim_map = -Inf;
+      return;
    end
 end
 
 if (nargin == 4)
    [H W] = size(window);
    if ((H*W) < 4 || (H > M) || (W > N))
-	   ssim_index = -Inf;
-	   ssim_map = -Inf;
+      ssim_index = -Inf;
+      ssim_map = -Inf;
       return
    end
    L = 255;
    if (length(K) == 2)
       if (K(1) < 0 || K(2) < 0)
-		   ssim_index = -Inf;
-   		ssim_map = -Inf;
-	   	return;
+         ssim_index = -Inf;
+         ssim_map = -Inf;
+         return;
       end
    else
-	   ssim_index = -Inf;
-   	ssim_map = -Inf;
-	   return;
+      ssim_index = -Inf;
+      ssim_map = -Inf;
+      return;
    end
 end
 
 if (nargin == 5)
    [H W] = size(window);
    if ((H*W) < 4 || (H > M) || (W > N))
-	   ssim_index = -Inf;
-	   ssim_map = -Inf;
+      ssim_index = -Inf;
+      ssim_map = -Inf;
       return
    end
    if (length(K) == 2)
       if (K(1) < 0 || K(2) < 0)
-		   ssim_index = -Inf;
-   		ssim_map = -Inf;
-	   	return;
+         ssim_index = -Inf;
+         ssim_map = -Inf;
+         return;
       end
    else
-	   ssim_index = -Inf;
-   	ssim_map = -Inf;
-	   return;
+      ssim_index = -Inf;
+      ssim_map = -Inf;
+      return;
    end
 end
 
@@ -180,7 +180,7 @@ if (C1 > 0 & C2 > 0)
 else
    numerator1 = 2*mu1_mu2 + C1;
    numerator2 = 2*sigma12 + C2;
-	denominator1 = mu1_sq + mu2_sq + C1;
+   denominator1 = mu1_sq + mu2_sq + C1;
    denominator2 = sigma1_sq + sigma2_sq + C2;
    ssim_map = ones(size(mu1));
    index = (denominator1.*denominator2 > 0);

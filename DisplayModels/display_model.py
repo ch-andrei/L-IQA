@@ -2,10 +2,51 @@ import numpy as np
 import json
 
 from utils.image_processing.image_tools import ensure3d
-from utils.image_processing.color_spaces import srgb2lum, srgb2rgb, rgb2srgb
+from utils.image_processing.color_spaces import rgb2lum, rgb2gray_matlab
 
 
-class DisplayModel:
+DM_LUT_AMBIENT_LUX = None
+DM_LUT_LUM_TARGET = None
+
+DM_PROFILES_PATH = 'DisplayModels/profiles/'  # path to .json profiles folder
+DM_AMBIENT_PROFILE = 'ambient_profile.json'  # LUT matching ambient condition to desired max screen luminance
+
+
+def init_dm_luts():
+    global DM_LUT_LUM_TARGET, DM_LUT_AMBIENT_LUX
+
+    __lut_ambient_lux_field = "lut_ambient_lux"
+    __lut_target_luminance_field = "lut_target_luminance"
+
+    with open(DM_PROFILES_PATH + DM_AMBIENT_PROFILE, 'r') as ambient_profile_file:
+        # load Lookup tables for display adaptive brightness profile
+        __ambient_profile = json.load(ambient_profile_file)
+
+        DM_LUT_AMBIENT_LUX = np.array(__ambient_profile[__lut_ambient_lux_field])
+        DM_LUT_LUM_TARGET = np.array(__ambient_profile[__lut_target_luminance_field])
+
+
+def get_desired_L_max(E_amb):
+    if DM_LUT_LUM_TARGET is None or DM_LUT_LUM_TARGET is None:
+        init_dm_luts()
+
+    # determine Lmax from the amount of ambient illumination:
+    # use the average level of illumination (if illumination is an array)
+    E_mean = np.mean(E_amb) if isinstance(E_amb, np.ndarray) else E_amb
+
+    # theoretical desired L_max value
+    L_max = np.interp(E_mean, DM_LUT_AMBIENT_LUX, DM_LUT_LUM_TARGET)
+
+    return L_max
+
+
+def get_E_refl(E_amb, use_luminance_only):
+    if isinstance(E_amb, np.ndarray) and len(E_amb.shape) == 3 and use_luminance_only:
+        return rgb2lum(E_amb)  # convert reflection map to luminance if needed
+    return E_amb
+
+
+class DisplayModel(object):
     """
     This model simulates the visual stimuli emitted by a display given the displayed content, the display parameters,
     and the ambient illumination conditions.
@@ -21,30 +62,56 @@ class DisplayModel:
         Lblack is the display's black level luminance,
         Lrefl is the luminance resulting from ambient illumination computed as
 
-    Lrefl = k * E_amb / np.pi
+    Lrefl = k * E_amb / PI
 
         k is the reflectivity constant,
-        E_amb the ambient illumination level in lux
-
+        E_amb is the ambient illumination level in lux,
+        PI is the mathematical constant 3.14159...
     """
+
+    # constant namefields to fetch from .json profile
+    __L_max_field = "L_max"
+    __L_min_field = "L_min"
+    __L_blk_field = "L_blk"
+    __L_contrast_ratio_field = "L_contrast_ratio"
+    __reflectivity_field = "k_reflectivity"
+    __gamma_field = "gamma"
+
+    # default device profile:
+    # values used for "aosp_on_bullhead" (Nexus)
+    __device_profile_name_d = "aosp_on_bullhead"
+    __L_max_d = 460
+    __L_min_d = 1.811
+    __reflectivity_d = 0.005
+    __L_contrast_ratio_d = 1000
+    __L_blk_d = None
+    __gamma_d = 2.2
+
+    # maximum tested lux value for ambient light
+    # this is used as an operational range (to guarantee min and max output range)
+    # this may be required by some IQA metrics that rescale inputs to some range, for ex., assume 0-1 input
+    __MAXIMUM_E_AMB = 30000
+
     def __init__(self,
-                 device_name=None,
+                 device_profile_name=None,
                  L_max=None,
                  L_min=None,
-                 contrast_ratio=None,
-                 gamma=2.2,
-                 reflectivity=0.01
+                 L_blk=None,
+                 L_contrast_ratio=None,
+                 reflectivity=None,
+                 gamma=None,
                  ):
         """
+        :param device_profile_name: must be a profile file "{device_name}.json" present in profile folder
 
-        :param device_name:
-            profile folder must contain a file named "{device_name}.json" where device_name is .json filename
+        If any of the parameters below are specified, they will overwrite the parameters given in the profile file.
+
         :param L_max:
             the highest display luminance value for a white pixel
         :param L_min:
             the lowest display luminance value for a white pixel
             note: Lmin is not the luminance of the black level (L_blk) of the display
-        :param contrast_ratio:
+        :param L_contrast_ratio:
             the ratio between the maximum and the black level display brightness
         :param gamma:
             display gamma
@@ -54,147 +121,92 @@ class DisplayModel:
             1. ITU-R BT.500-11 recommends 6% or 0.06 for common displays
             https://www.itu.int/dms_pubrec/itu-r/rec/bt/R-REC-BT.500-11-200206-S!!PDF-E.pdf
             2. Rafal Mantiuk's work where this display model was introduced and HDR-VDP-2 source code
-            recommend 1% or 0.01
+            recommends 1% or 0.01
         """
 
-        # CONSTANTS AND CONSTRAINTS
+        # load default device profile if a profile name is not given
+        if device_profile_name is None or not device_profile_name:
+            device_profile_name = DisplayModel.__device_profile_name_d
 
-        # maximum tested lux value for ambient light
-        # this is used as an operational range (to guarantee min and max output range)
-        # this may be required by some IQA metrics that rescale inputs to some range, for ex., assume 0-1 input
-        self.maximum_E_amb = 100000
+        # read default params from .json profile file with display's characteristics
+        with open(DM_PROFILES_PATH + device_profile_name + '.json', 'r') as device_profile_file:
+            device_profile_dict = json.load(device_profile_file)
 
-        # path to .json profiles
-        profiles_path = 'DisplayModels/profiles/'
-        ambient_profile = 'ambient_profile.json'
-        # constant namefields to fetch from .json profile
-        L_max_field = "L_max"
-        L_min_field = "L_min"
-        L_blk = "L_blk"
-        L_contrast_ratio = "L_contrast_ratio"
-        lut_ambient_lux_field = "lut_ambient_lux"
-        lut_target_luminance_field = "lut_target_luminance"
-        reflectivity_field = "k_reflectivity"
+            self.L_max = device_profile_dict.pop(DisplayModel.__L_max_field, DisplayModel.__L_max_d)
+            self.L_min = device_profile_dict.pop(DisplayModel.__L_min_field, DisplayModel.__L_min_d)
+            self.L_blk = device_profile_dict.pop(DisplayModel.__L_blk_field, DisplayModel.__L_blk_d)
+            self.L_contrast_ratio = device_profile_dict.pop(DisplayModel.__L_contrast_ratio_field,
+                                                            DisplayModel.__L_contrast_ratio_d)
+            self.reflectivity = device_profile_dict.pop(DisplayModel.__reflectivity_field,
+                                                        DisplayModel.__reflectivity_d)
+            self.y = device_profile_dict.pop(DisplayModel.__gamma_field, DisplayModel.__gamma_d)
 
-        # default device name
-        if device_name is None or not device_name:
-            device_name = "d500"
-
-        # CONSTANTS END
-
-        # display gamma
-        self.y = gamma
-
-        # read .json profile file with display's luminance characteristics and display dimming profile
-        with open(profiles_path + device_name + '.json', 'r') as device_profile_file, \
-                open(profiles_path + ambient_profile, 'r') as ambient_profile_file:
-            device_profile = json.load(device_profile_file)
-            ambient_profile = json.load(ambient_profile_file)
-
-            # display maximum and minimum luminance level (white point luminance)
-            # Lmax occurs at maximum display brightness, Lmin at lowest
-            if L_max is None:
-                self.L_max = device_profile[L_max_field]
-            else:
-                self.L_max = float(L_max)
-
-            if L_min is None:
-                self.L_min = device_profile[L_min_field]
-            else:
-                self.L_min = float(L_min)
-
-            try:
-                self.k = device_profile[reflectivity_field]
-            except KeyError:
-                self.k = reflectivity
-
-            if contrast_ratio is None:
-                # not all profiles have this defined
-                try:
-                    self.L_contrast_ratio = device_profile[L_contrast_ratio]
-                except KeyError:
-                    try:
-                        # use constant black level
-                        self.L_contrast_ratio = None
-                        self.L_blk = device_profile[L_blk]
-                    except KeyError:
-                        # default to the ratio between luminance values for max and min level
-                        self.L_contrast_ratio = 100
-            else:
-                self.L_contrast_ratio = float(contrast_ratio)
-
-            # desired display adaptive brightness profile as LUT
-            self.lut_ambient_lux = np.array(ambient_profile[lut_ambient_lux_field])
-            self.lut_lum_target = np.array(ambient_profile[lut_target_luminance_field])
-
-        # maximum ambient condition when adaptive brightness is enabled
-        self.adaptive_brightness_enabled_threshold = np.interp(self.L_max, self.lut_lum_target, self.lut_ambient_lux)
+        # overwrite with custom params, if specified
+        unchanged_if_input_none = lambda a, b: a if b is None else b
+        self.L_max = unchanged_if_input_none(self.L_max, L_max)
+        self.L_min = unchanged_if_input_none(self.L_min, L_min)
+        self.L_blk = unchanged_if_input_none(self.L_blk, L_blk)
+        self.L_contrast_ratio = float(unchanged_if_input_none(self.L_contrast_ratio, L_contrast_ratio))
+        self.reflectivity = unchanged_if_input_none(self.reflectivity, reflectivity)
+        self.y = unchanged_if_input_none(self.y, gamma)
 
     def get_L_upper_bound(self):
-        return self.L_max + self.get_L_refl(self.maximum_E_amb, inject_reflection=True)
+        return self.L_max + self.get_L_refl(DisplayModel.__MAXIMUM_E_AMB, inject_reflection=True)
 
-    def get_L_max(self, E_amb, use_display_dimming):
+    def get_L_max(self, E_amb, use_display_dimming, L_max=None, use_luminance_only=False):
+        # if L_max override is given as an input
+        if L_max is not None:
+            if isinstance(L_max, np.ndarray):
+                if len(L_max.shape) < 3 and not use_luminance_only:
+                    return L_max[..., np.newaxis]  # h x w x 1
+                return L_max
+            else:
+                return float(L_max)
+
+        # if display dimming is disabled, simply return maximum display L_max
         if not use_display_dimming:
             return self.L_max
 
-        L_max = np.interp(E_amb, self.lut_ambient_lux, self.lut_lum_target)  # theoretical desired L_max value
+        # compute ideal display L_max and clamp between allowed display parameters
+        L_max_ideal = get_desired_L_max(E_amb)
+        L_max = max(self.L_min, min(self.L_max, L_max_ideal))
 
-        return max(self.L_min, min(self.L_max, L_max))
+        return L_max
 
     def _get_L_blk(self, L_max):
-        # return L_max / self.L_contrast_ratio + self._get_L_refl(E_amb, inject_reflection)
-        return self.L_blk if self.L_contrast_ratio is None else L_max / self.L_contrast_ratio
+        if self.L_contrast_ratio is None or self.L_contrast_ratio <= 0:
+            return self.L_blk
+        else:
+            return L_max / self.L_contrast_ratio
 
-    def get_L_refl(self, E_amb, inject_reflection=True):
+    def get_L_refl(self, E_amb, inject_reflection=True, use_luminance_only=False):
         if not inject_reflection:
             return 0
-
-        return self.k * E_amb / np.pi
-
-    def _get_E_refl(self, E_amb, illumination_map, illumination_map_weight_mode, use_luminance_only=True):
-        if illumination_map is None:
-            return E_amb
-
-        if illumination_map_weight_mode is None:
-            illumination_map_weight_mode = 'mean'
-
-        illumination_map_func = np.mean if illumination_map_weight_mode == 'mean' else np.max
-
-        if len(illumination_map.shape) == 3:
-            lum_map = srgb2lum(illumination_map)
-
-            if use_luminance_only:
-                return E_amb * lum_map / lum_map.mean()
-            else:
-                lum_map_weighted = ensure3d(lum_map) * illumination_map
-                lum_map_weighted = lum_map_weighted / illumination_map_func(lum_map_weighted)
-                return E_amb * lum_map_weighted
-
-        return E_amb * illumination_map / illumination_map_func(illumination_map)
+        E_refl = get_E_refl(E_amb, use_luminance_only)
+        return self.reflectivity * E_refl / np.pi
 
     def display_simulation(
             self,
-            data,  # input rgb/luminance values in range [0-1]
+            V,  # input rgb/luminance values in range [0-1]
             E_amb,  # ambient illuminance in lux (single value or array)
-            illumination_map=None,
-            illumination_map_weight_mode=None,  # select from [None, 'mean', 'max']
-            use_luminance_only=True,  # whether we want to output rgb or luminance only
+            L_max=None,  # input display maximum luminance
+            use_luminance_only=False,  # whether we want to output rgb or luminance only
             inject_reflection=True,  # whether reflections will be added
             use_display_dimming=True,  # whether auto-brightness is enabled to control screen max Lum
             ):
-        E_amb = np.clip(E_amb, 0, self.maximum_E_amb)
-        L_max = self.get_L_max(E_amb, use_display_dimming)
-        E_refl = self._get_E_refl(E_amb, illumination_map, illumination_map_weight_mode, use_luminance_only)
-        L_refl = self.get_L_refl(E_refl, inject_reflection)
+        E_amb = np.clip(E_amb, 0, DisplayModel.__MAXIMUM_E_AMB)
+        L_max = self.get_L_max(E_amb, use_display_dimming, L_max, use_luminance_only)
+        L_refl = self.get_L_refl(E_amb, inject_reflection, use_luminance_only)
         L_blk = self._get_L_blk(L_max)
 
-        if use_luminance_only and len(data.shape) == 3:
-            L = srgb2lum(data)
+        if use_luminance_only and len(V.shape) == 3:
+            V = rgb2gray_matlab(V)
         else:
-            L = srgb2rgb(data)
             L_refl = ensure3d(L_refl)
 
-        return np.power(L, self.y) * (L_max - L_blk) + L_blk + L_refl
+        L_d = np.power(V, self.y) * (L_max - L_blk) + L_blk
+
+        return L_d + L_refl
 
     # full inverse of the display model equation
     # can toggle whether if the effect of reflections and screen dimming should be undone
@@ -202,30 +214,34 @@ class DisplayModel:
             self,
             L,
             E_amb,
-            illumination_map=None,
-            illumination_map_weight_mode=None,
-            use_luminance_only=True,  # whether we want to output rgb or luminance only
-            undo_reflection=True,  # whether reflections will be removed
+            L_max=None,
+            use_luminance_only=False,  # whether we want to output rgb or luminance only
+            undo_reflection=False,  # whether reflections will be removed
             undo_display_lum_profile=True,  # whether screen dimming is undone
-            undo_gamma=True
+            undo_gamma=True,
             ):
-        E_amb = np.clip(E_amb, 0, self.maximum_E_amb)
-        L_max = self.get_L_max(E_amb, undo_display_lum_profile)
-        E_refl = self._get_E_refl(E_amb, illumination_map, illumination_map_weight_mode, use_luminance_only)
-        L_refl = self.get_L_refl(E_refl, undo_reflection)
+        E_amb = np.clip(E_amb, 0, DisplayModel.__MAXIMUM_E_AMB)
+        L_max = self.get_L_max(E_amb, undo_display_lum_profile, L_max)
+        L_refl = self.get_L_refl(E_amb, undo_reflection, use_luminance_only)
         L_blk = self._get_L_blk(L_max)
+
+        # if lmax is given and an array, use the MAXIMUM value of lmax as upper bound,
+        # else the effect of having a diffuser is undone (it is not visible)
+        if L_max is not None and isinstance(L_max, np.ndarray):
+            L_max = L_max.max()
+
+        if isinstance(L_blk, np.ndarray):
+            L_blk = L_blk.min()
 
         if len(L.shape) == 3:
             L_refl = ensure3d(L_refl)
 
-        L_out = np.power(np.maximum((L - L_blk - L_refl) / (L_max - L_blk), 0.), 1. / self.y)
+        V = np.maximum((L - L_blk - L_refl) / (L_max - L_blk), 0.)
 
         if undo_gamma:
-            L_out = rgb2srgb(ensure3d(L_out))
-        else:
-            L_out = (rgb2srgb(ensure3d(L_out)))[..., 0]  # TODO: why take R channel?
+            V = np.power(V, 1. / self.y)
 
-        return L_out
+        return V
 
     # simple inverse of the display function
     @staticmethod
